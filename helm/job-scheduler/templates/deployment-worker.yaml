@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "job-scheduler.fullname" . }}-worker
+  labels:
+    {{- include "job-scheduler.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: {{ .Values.replicaCount.worker }}
+  selector:
+    matchLabels:
+      app: {{ include "job-scheduler.fullname" . }}-worker
+  template:
+    metadata:
+      labels:
+        app: {{ include "job-scheduler.fullname" . }}-worker
+    spec:
+      containers:
+        - name: worker
+          image: "{{ .Values.image.registry }}/{{ .Values.image.worker.repository }}:{{ .Values.image.worker.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: DATABASE_URL
+              value: "postgres://{{ .Values.postgresql.username }}:{{ .Values.postgresql.password }}@{{ .Values.postgresql.host }}:{{ .Values.postgresql.port }}/{{ .Values.postgresql.database }}?sslmode=disable"
+            - name: REDIS_ADDR
+              value: "{{ .Values.redis.host }}:{{ .Values.redis.port }}"
+            - name: WORKER_CONCURRENCY
+              value: "{{ .Values.worker.concurrency }}"
+          resources:
+            {{- toYaml .Values.resources.worker | nindent 12 }}
+---
+{{- if .Values.autoscaling.worker.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "job-scheduler.fullname" . }}-worker-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "job-scheduler.fullname" . }}-worker
+  minReplicas: {{ .Values.autoscaling.worker.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.worker.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.worker.targetCPUUtilizationPercentage }}
+{{- end }}

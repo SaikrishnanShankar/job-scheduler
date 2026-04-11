@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "job-scheduler.fullname" . }}-server
+  labels:
+    {{- include "job-scheduler.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.server.type }}
+  selector:
+    app: {{ include "job-scheduler.fullname" . }}-server
+  ports:
+    - name: http
+      port: {{ .Values.service.server.port }}
+      targetPort: {{ .Values.service.server.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "job-scheduler.fullname" . }}-frontend
+  labels:
+    {{- include "job-scheduler.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.frontend.type }}
+  selector:
+    app: {{ include "job-scheduler.fullname" . }}-frontend
+  ports:
+    - name: http
+      port: {{ .Values.service.frontend.port }}
+      targetPort: {{ .Values.service.frontend.port }}

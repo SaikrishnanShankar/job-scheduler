@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "job-scheduler.fullname" . }}-server
+  labels:
+    {{- include "job-scheduler.labels" . | nindent 4 }}
+    app.kubernetes.io/component: server
+spec:
+  replicas: {{ .Values.replicaCount.server }}
+  selector:
+    matchLabels:
+      app: {{ include "job-scheduler.fullname" . }}-server
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: {{ include "job-scheduler.fullname" . }}-server
+      {{- if .Values.monitoring.prometheusAnnotations }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.service.server.port }}"
+        prometheus.io/path: "/metrics"
+      {{- end }}
+    spec:
+      containers:
+        - name: server
+          image: "{{ .Values.image.registry }}/{{ .Values.image.server.repository }}:{{ .Values.image.server.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.server.port }}
+          env:
+            - name: PORT
+              value: "{{ .Values.service.server.port }}"
+            - name: DATABASE_URL
+              value: "postgres://{{ .Values.postgresql.username }}:{{ .Values.postgresql.password }}@{{ .Values.postgresql.host }}:{{ .Values.postgresql.port }}/{{ .Values.postgresql.database }}?sslmode=disable"
+            - name: REDIS_ADDR
+              value: "{{ .Values.redis.host }}:{{ .Values.redis.port }}"
+          resources:
+            {{- toYaml .Values.resources.server | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.service.server.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.service.server.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 30

@@ -1,0 +1,73 @@
+replicaCount:
+  server: 2
+  worker: 3
+
+image:
+  registry: ghcr.io/saikrishnans
+  pullPolicy: Always
+  server:
+    repository: job-scheduler-server
+    tag: latest
+  worker:
+    repository: job-scheduler-worker
+    tag: latest
+  frontend:
+    repository: job-scheduler-frontend
+    tag: latest
+
+service:
+  server:
+    type: ClusterIP
+    port: 8080
+  frontend:
+    type: ClusterIP
+    port: 80
+
+ingress:
+  enabled: true
+  className: nginx
+  host: job-scheduler.local
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+
+resources:
+  server:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+  worker:
+    requests:
+      cpu: 100m
+      memory: 64Mi
+    limits:
+      cpu: 400m
+      memory: 128Mi
+
+autoscaling:
+  worker:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 60
+
+postgresql:
+  host: postgres-service
+  port: 5432
+  database: jobscheduler
+  username: postgres
+  password: postgres
+
+redis:
+  host: redis-service
+  port: 6379
+  password: ""
+
+worker:
+  concurrency: 5
+
+monitoring:
+  enabled: true
+  prometheusAnnotations: true
