@@ -57,6 +57,11 @@ jobs:
       - name: Build worker
         run: go build -o /dev/null ./cmd/worker
 
+      - name: Apply schema
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d jobscheduler_test -f internal/store/schema.sql
+
       - name: Run tests
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/jobscheduler_test?sslmode=disable
